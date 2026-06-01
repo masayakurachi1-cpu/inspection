@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>点検管理ダッシュボード</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0efe9;
+    --surface: #ffffff;
+    --surface2: #f7f6f2;
+    --border: #e0ddd5;
+    --text: #1a1916;
+    --text2: #6b6860;
+    --text3: #a8a59e;
+    --ok: #1a7a5e;
+    --ok-bg: #e6f5ef;
+    --ng: #c0392b;
+    --ng-bg: #fcecea;
+    --accent: #1a1916;
+    --blue: #1a56db;
+    --blue-bg: #e8f0fe;
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+  html { font-size: 16px; }
+  body {
+    font-family: -apple-system, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--accent); color: #fff;
+    padding: 0 24px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-icon { width: 30px; height: 30px; }
+  .header-icon svg { width: 30px; height: 30px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .header-title { font-size: 15px; font-weight: 700; }
+  .header-sub { font-size: 12px; opacity: 0.6; margin-left: 8px; }
+  .reload-btn {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; border-radius: 8px; padding: 6px 14px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 6px; transition: background 0.15s;
+  }
+  .reload-btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* ===== MAIN ===== */
+  .main { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+  /* ===== TODAY SUMMARY ===== */
+  .today-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--text2); text-transform: uppercase; margin-bottom: 10px;
+  }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 28px; }
+  .summary-card {
+    background: var(--surface); border-radius: var(--radius-lg);
+    padding: 16px 18px; border: 1px solid var(--border);
+  }
+  .summary-card .s-num { font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .summary-card .s-lbl { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  .s-num.ok { color: var(--ok); }
+  .s-num.ng { color: var(--ng); }
+  .s-num.pending { color: #c07a00; }
+  .s-num.total { color: var(--text); }
+
+  /* ===== VEHICLE STATUS CARDS ===== */
+  .vehicle-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 10px; margin-bottom: 28px; }
+  .vs-card {
+    background: var(--surface); border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border); padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .vs-card.ok-card { border-color: var(--ok); }
+  .vs-card.ng-card { border-color: var(--ng); }
+  .vs-card.pending-card { border-color: var(--border); }
+  .vs-indicator {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .vs-indicator.ok { background: var(--ok); }
+  .vs-indicator.ng { background: var(--ng); }
+  .vs-indicator.pending { background: var(--text3); }
+  .vs-info { flex: 1; min-width: 0; }
+  .vs-num { font-size: 16px; font-weight: 800; }
+  .vs-name { font-size: 12px; color: var(--text2); }
+  .vs-status-text { font-size: 12px; font-weight: 600; }
+  .vs-status-text.ok { color: var(--ok); }
+  .vs-status-text.ng { color: var(--ng); }
+  .vs-status-text.pending { color: var(--text3); }
+  .vs-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .vs-time { font-size: 12px; color: var(--text2); text-align: right; white-space: nowrap; }
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 6px 14px; border-radius: 100px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: inherit; color: var(--text2); transition: all 0.12s;
+  }
+  .filter-btn:hover { border-color: var(--text2); }
+  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .filter-btn.ng-filter.active { background: var(--ng); border-color: var(--ng); }
+  .filter-spacer { margin-left: auto; }
+  .search-input {
+    padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); font-size: 13px; font-family: inherit;
+    color: var(--text); width: 160px;
+  }
+  .search-input:focus { outline: none; border-color: var(--text); }
+
+  /* ===== TABLE ===== */
+  .table-wrap {
+    background: var(--surface); border-radius: var(--radius-lg);
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .table-header-row {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-title { font-size: 14px; font-weight: 700; }
+  .table-count { font-size: 13px; color: var(--text2); }
+  .records-table { width: 100%; border-collapse: collapse; }
+  .records-table th {
+    padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700;
+    color: var(--text2); background: var(--surface2);
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+    letter-spacing: 0.04em;
+  }
+  .records-table td {
+    padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .records-table tr:last-child td { border-bottom: none; }
+  .records-table tr:hover td { background: var(--surface2); }
+  .records-table tr.ng-row td { background: #fff8f8; }
+  .records-table tr.ng-row:hover td { background: #fff0f0; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 100px; font-size: 12px; font-weight: 700;
+  }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.ng { background: var(--ng-bg); color: var(--ng); }
+  .badge.blue { background: var(--blue-bg); color: var(--blue); }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .detail-btn {
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 10px; font-size: 12px;
+    cursor: pointer; font-family: inherit; color: var(--text2);
+    transition: all 0.12s;
+  }
+  .detail-btn:hover { border-color: var(--text); color: var(--text); }
+
+  /* ===== DETAIL MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 500; display: none; align-items: flex-start;
+    justify-content: center; padding: 24px 16px; overflow-y: auto;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: var(--radius-lg);
+    width: 100%; max-width: 680px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    margin: auto;
+  }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .modal-close {
+    background: var(--surface2); border: none; border-radius: 8px;
+    width: 32px; height: 32px; cursor: pointer; font-size: 18px;
+    display: flex; align-items: center; justify-content: center; color: var(--text2);
+    transition: background 0.12s;
+  }
+  .modal-close:hover { background: var(--border); }
+  .modal-body { padding: 16px 20px; }
+  .modal-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+  .modal-stat { background: var(--surface2); border-radius: var(--radius); padding: 12px; text-align: center; }
+  .modal-stat-num { font-size: 22px; font-weight: 800; }
+  .modal-stat-lbl { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .modal-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 6px; }
+  .modal-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 8px; font-size: 13px;
+    border: 1px solid var(--border);
+  }
+  .modal-item.ok { background: var(--ok-bg); border-color: var(--ok-border, #9dd4bf); }
+  .modal-item.ng { background: var(--ng-bg); border-color: #f0a09a; }
+  .modal-item.unknown { background: var(--surface2); }
+  .modal-item-val { font-weight: 700; flex-shrink: 0; }
+  .modal-item-val.ok { color: var(--ok); }
+  .modal-item-val.ng { color: var(--ng); }
+  .modal-item-val.unknown { color: var(--text3); }
+  .modal-item-name { font-size: 12px; color: var(--text); }
+  .modal-note { background: var(--surface2); border-radius: var(--radius); padding: 12px; margin-top: 12px; font-size: 13px; }
+  .modal-note-label { font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state { text-align: center; padding: 48px 16px; color: var(--text2); }
+  .empty-state .e-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ===== LOADING ===== */
+  .loading-state { text-align: center; padding: 48px; color: var(--text2); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 600px) {
+    .records-table .hide-mobile { display: none; }
+    .main { padding: 16px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    </div>
+    <span class="header-title">点検管理ダッシュボード</span>
+    <span class="header-sub" id="headerSub">読み込み中...</span>
+  </div>
+  <button class="reload-btn" onclick="loadData()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+    最新データ
+  </button>
+</header>
+
+<main class="main">
+  <!-- TODAY SUMMARY -->
+  <div class="today-label">本日の概要 — <span id="todayLabel"></span></div>
+  <div class="summary-grid" id="summaryGrid">
+    <div class="summary-card"><div class="spinner" style="width:24px;height:24px;border-width:2px;margin:0"></div></div>
+  </div>
+
+  <!-- VEHICLE STATUS -->
+  <div class="today-label">車両ごとの状況</div>
+  <div class="vehicle-status-grid" id="vehicleStatusGrid"></div>
+
+  <!-- FILTER -->
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('all', this)">すべて</button>
+    <button class="filter-btn ng-filter" onclick="setFilter('ng', this)">要確認のみ</button>
+    <button class="filter-btn" onclick="setFilter('today', this)">本日のみ</button>
+    <div class="filter-spacer"></div>
+    <input type="text" class="search-input" placeholder="車両番号・氏名で絞り込み" id="searchInput" oninput="renderTable()">
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <div class="table-header-row">
+      <div class="table-title">点検記録一覧</div>
+      <div class="table-count" id="tableCount">-件</div>
+    </div>
+    <div id="tableBody">
+      <div class="loading-state"><div class="spinner"></div><div>データを読み込んでいます...</div></div>
+    </div>
+  </div>
+</main>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+// ★ ここにGASのウェブアプリURLを貼り付けてください ★
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyEZydAJx0bVgW3Ih80ZwAF-atvjMXhiykoO5Co_iZjB3rdWJzlJBqJvVkvHA-GM0cJ8g/exec';
+
+const VEHICLES = [
+  { num: '6541', name: '味岡' },
+  { num: '6654', name: '' },
+  { num: '808',  name: '牧野' },
+  { num: '7538', name: '倉本' },
+];
+
+const ALL_ITEMS = [
+  { id: 'b1',  name: 'ブレーキペダル' },
+  { id: 'b2',  name: '駐車ブレーキレバー' },
+  { id: 'b3',  name: '◎空気圧力計(運転席ブレーキ)' },
+  { id: 'b4',  name: '◎ブレーキバルブ(運転席)' },
+  { id: 'l1',  name: '灯火装置・方向指示器' },
+  { id: 'br1', name: 'ブレーキオイルリザーバータンク' },
+  { id: 'br2', name: 'タイヤ(空気圧)' },
+  { id: 'br3', name: 'タイヤ(外観)' },
+  { id: 'br4', name: 'タイヤ(摩耗)' },
+  { id: 'br5', name: 'ホイールナット' },
+  { id: 'br6', name: 'ホイールボルト(さび)' },
+  { id: 'br7', name: 'ホイールボルト(突出)' },
+  { id: 'br8', name: '◎空気圧力計(外回りブレーキ)' },
+  { id: 'br9', name: '◎ブレーキバルブ(外回り)' },
+  { id: 't1',  name: 'エンジン(始動)' },
+  { id: 't2',  name: 'エンジン(走行)' },
+  { id: 't3',  name: 'ウインドウォッシャ' },
+  { id: 't4',  name: 'ワイパー' },
+  { id: 't5',  name: 'バッテリ' },
+  { id: 't6',  name: 'タイヤ(溝の深さ)' },
+  { id: 't7',  name: 'ラジエター' },
+  { id: 't8',  name: 'ファンベルト' },
+  { id: 't9',  name: '潤滑装置(エンジンオイル)' },
+  { id: 't10', name: '◎空気圧力計(適時点検)' },
+  { id: 't11', name: '◎ブレーキバルブ(適時点検)' },
+];
+
+let allRecords = [];
+let currentFilter = 'all';
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+}
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+document.getElementById('todayLabel').textContent = todayStr();
+
+// ===================== LOAD DATA =====================
+async function loadData() {
+  document.getElementById('headerSub').textContent = '読み込み中...';
+
+  // GAS URLが未設定の場合はデモデータ
+  if (GAS_URL === 'https://script.google.com/macros/s/AKfycbyEZydAJx0bVgW3Ih80ZwAF-atvjMXhiykoO5Co_iZjB3rdWJzlJBqJvVkvHA-GM0cJ8g/exec') {
+    allRecords = getDemoData();
+    renderAll();
+    document.getElementById('headerSub').textContent = '（デモモード）';
+    return;
+  }
+
+  try {
+    const res = await fetch(GAS_URL + '?t=' + Date.now());
+    const data = await res.json();
+    allRecords = data.records || [];
+    renderAll();
+    document.getElementById('headerSub').textContent = `最終更新: ${new Date().toLocaleTimeString('ja-JP')}`;
+  } catch(e) {
+    document.getElementById('tableBody').innerHTML =
+      '<div class="empty-state"><div class="e-icon">⚠</div><p>データの読み込みに失敗しました。GAS URLを確認してください。</p></div>';
+    document.getElementById('headerSub').textContent = '読み込みエラー';
+  }
+}
+
+// ===================== DEMO DATA =====================
+function getDemoData() {
+  const today = todayISO();
+  const checksFull = {};
+  ALL_ITEMS.forEach(it => checksFull[it.name] = '○');
+  const checksNG = { ...checksFull };
+  checksNG['タイヤ(空気圧)'] = '✕';
+  checksNG['ホイールナット'] = '✕';
+  return [
+    { '送信日時': `${today} 07:32:10`, '点検日': today, '車両番号': '6541', '車両氏名': '味岡', '点検実施者': '山田 太郎', '前回異常箇所': '異常なし', '措置内容': 'なし', '異常なし件数': 25, '要確認件数': 0, '合計項目数': 25, ...checksFull },
+    { '送信日時': `${today} 07:45:22`, '点検日': today, '車両番号': '6654', '車両氏名': '', '点検実施者': '鈴木 一郎', '前回異常箇所': 'タイヤ空気圧低下', '措置内容': '空気補充済み', '異常なし件数': 23, '要確認件数': 2, '合計項目数': 25, ...checksNG },
+    { '送信日時': `2026-05-27 08:01:05`, '点検日': '2026-05-27', '車両番号': '808', '車両氏名': '牧野', '点検実施者': '田中 花子', '前回異常箇所': '異常なし', '措置内容': 'なし', '異常なし件数': 25, '要確認件数': 0, '合計項目数': 25, ...checksFull },
+    { '送信日時': `2026-05-27 08:10:33`, '点検日': '2026-05-27', '車両番号': '7538', '車両氏名': '倉本', '点検実施者': '佐藤 次郎', '前回異常箇所': '異常なし', '措置内容': 'なし', '異常なし件数': 25, '要確認件数': 0, '合計項目数': 25, ...checksFull },
+  ];
+}
+
+// ===================== RENDER ALL =====================
+function renderAll() {
+  renderSummary();
+  renderVehicleStatus();
+  renderTable();
+}
+
+function renderSummary() {
+  const today = todayISO();
+  const todayRecs = allRecords.filter(r => r['点検日'] === today);
+  const ngRecs = todayRecs.filter(r => Number(r['要確認件数']) > 0);
+  const doneVehicles = new Set(todayRecs.map(r => r['車両番号'])).size;
+  const pendingVehicles = VEHICLES.length - doneVehicles;
+
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="summary-card"><div class="s-num total">${doneVehicles}</div><div class="s-lbl">本日点検完了 台数</div></div>
+    <div class="summary-card"><div class="s-num pending">${pendingVehicles}</div><div class="s-lbl">本日未提出 台数</div></div>
+    <div class="summary-card"><div class="s-num ng">${ngRecs.length}</div><div class="s-lbl">本日 要確認あり件数</div></div>
+    <div class="summary-card"><div class="s-num total">${allRecords.length}</div><div class="s-lbl">総記録数（全期間）</div></div>
+  `;
+}
+
+function renderVehicleStatus() {
+  const today = todayISO();
+  const html = VEHICLES.map(v => {
+    const recs = allRecords.filter(r => r['車両番号'] === v.num && r['点検日'] === today);
+    if (recs.length === 0) {
+      return `<div class="vs-card pending-card">
+        <div class="vs-indicator pending"></div>
+        <div class="vs-info">
+          <div class="vs-num">${v.num}</div>
+          <div class="vs-name">${v.name||'（氏名なし）'}</div>
+          <div class="vs-status-text pending">本日未提出</div>
+        </div>
+      </div>`;
+    }
+    const rec = recs[0];
+    const ng = Number(rec['要確認件数']);
+    const state = ng > 0 ? 'ng' : 'ok';
+    const statusText = ng > 0 ? `要確認 ${ng}件` : '異常なし';
+    const time = rec['送信日時'] ? rec['送信日時'].split(' ')[1]?.slice(0,5) : '';
+    return `<div class="vs-card ${state}-card">
+      <div class="vs-indicator ${state}"></div>
+      <div class="vs-info">
+        <div class="vs-num">${v.num}</div>
+        <div class="vs-name">${v.name||'（氏名なし）'} — ${rec['点検実施者']||''}</div>
+        <div class="vs-status-text ${state}">${statusText}</div>
+      </div>
+      <div class="vs-time">${time}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('vehicleStatusGrid').innerHTML = html;
+}
+
+function renderTable() {
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const today = todayISO();
+  let filtered = allRecords.filter(r => {
+    if (currentFilter === 'ng' && Number(r['要確認件数']) === 0) return false;
+    if (currentFilter === 'today' && r['点検日'] !== today) return false;
+    if (search) {
+      const hay = `${r['車両番号']} ${r['車両氏名']} ${r['点検実施者']}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('tableCount').textContent = `${filtered.length}件`;
+
+  if (filtered.length === 0) {
+    document.getElementById('tableBody').innerHTML =
+      '<div class="empty-state"><div class="e-icon">📋</div><p>該当する記録がありません</p></div>';
+    return;
+  }
+
+  const rows = filtered.map((r, idx) => {
+    const ng = Number(r['要確認件数']);
+    const badge = ng > 0
+      ? `<span class="badge ng"><span class="badge-dot"></span>要確認 ${ng}件</span>`
+      : `<span class="badge ok"><span class="badge-dot"></span>異常なし</span>`;
+    return `<tr class="${ng > 0 ? 'ng-row' : ''}">
+      <td>${r['点検日'] || ''}</td>
+      <td><strong>${r['車両番号']}</strong> ${r['車両氏名']||''}</td>
+      <td class="hide-mobile">${r['点検実施者']||''}</td>
+      <td>${badge}</td>
+      <td class="hide-mobile">${r['送信日時']?.split(' ')[1]?.slice(0,5)||''}</td>
+      <td><button class="detail-btn" onclick="showDetail(${idx})">詳細</button></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tableBody').innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="records-table">
+      <thead><tr>
+        <th>日付</th><th>車両</th>
+        <th class="hide-mobile">点検者</th>
+        <th>結果</th>
+        <th class="hide-mobile">時刻</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>`;
+
+  // 詳細用データ保存
+  window._filteredRecords = filtered;
+}
+
+// ===================== FILTER =====================
+function setFilter(val, btn) {
+  currentFilter = val;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+// ===================== DETAIL MODAL =====================
+function showDetail(idx) {
+  const r = window._filteredRecords[idx];
+  if (!r) return;
+  const ng = Number(r['要確認件数']);
+  const ok = Number(r['異常なし件数']);
+  const total = Number(r['合計項目数']);
+
+  const itemsHtml = ALL_ITEMS.map(it => {
+    const val = r[it.name] || '－';
+    const cls = val === '○' ? 'ok' : val === '✕' ? 'ng' : 'unknown';
+    const label = val === '○' ? '○' : val === '✕' ? '✕' : '－';
+    return `<div class="modal-item ${cls}">
+      <span class="modal-item-val ${cls}">${label}</span>
+      <span class="modal-item-name">${it.name}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">車両 ${r['車両番号']} ${r['車両氏名']||''} — 点検詳細</div>
+        <div class="modal-sub">${r['点検日']} ／ 点検者：${r['点検実施者']||'不明'} ／ 送信：${r['送信日時']||''}</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-stats">
+        <div class="modal-stat"><div class="modal-stat-num" style="color:var(--ok)">${ok}</div><div class="modal-stat-lbl">異常なし</div></div>
+        <div class="modal-stat"><div class="modal-stat-num" style="color:var(--ng)">${ng}</div><div class="modal-stat-lbl">要確認</div></div>
+        <div class="modal-stat"><div class="modal-stat-num">${total}</div><div class="modal-stat-lbl">合計項目</div></div>
+      </div>
+      <div class="modal-items">${itemsHtml}</div>
+      <div class="modal-note">
+        <div class="modal-note-label">🚨 前回異常箇所</div>
+        <div>${r['前回異常箇所']||'記録なし'}</div>
+      </div>
+      <div class="modal-note" style="margin-top:8px">
+        <div class="modal-note-label">📋 措置内容</div>
+        <div>${r['措置内容']||'記録なし'}</div>
+      </div>
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+// ===================== INIT =====================
+loadData();
+</script>
+</body>
+</html>

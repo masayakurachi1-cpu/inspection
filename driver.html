@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>日常点検表</title>
+<style>
+  /* ===================== RESET & BASE ===================== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f4f3ef;
+    --surface: #ffffff;
+    --surface2: #f9f8f5;
+    --border: #e2e0d8;
+    --border2: #ccc9be;
+    --text: #1a1916;
+    --text2: #6b6860;
+    --text3: #a8a59e;
+    --ok: #1a7a5e;
+    --ok-bg: #e6f5ef;
+    --ok-border: #9dd4bf;
+    --ng: #c0392b;
+    --ng-bg: #fcecea;
+    --ng-border: #f0a09a;
+    --accent: #1a1916;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  html { font-size: 16px; }
+  body {
+    font-family: -apple-system, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 120px;
+  }
+
+  /* ===================== HEADER ===================== */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(244,243,239,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px 10px;
+  }
+  .header-inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+  .header-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .header-icon svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .header-title { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-date { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .header-progress { margin-left: auto; text-align: right; }
+  .header-pct { font-size: 14px; font-weight: 700; }
+  .header-pct-label { font-size: 11px; color: var(--text2); }
+
+  /* ===================== PROGRESS BAR ===================== */
+  .progress-track {
+    height: 3px; background: var(--border); position: relative;
+  }
+  .progress-fill {
+    height: 100%; background: var(--ok); transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    border-radius: 2px;
+  }
+
+  /* ===================== MAIN CONTENT ===================== */
+  .main { max-width: 640px; margin: 0 auto; padding: 16px 12px; }
+
+  /* ===================== VEHICLE SELECTOR ===================== */
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--text2); text-transform: uppercase; margin-bottom: 8px; padding-left: 2px;
+  }
+  .vehicle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
+  .vehicle-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 12px 14px; cursor: pointer;
+    transition: all 0.15s; position: relative; overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .vehicle-card:active { transform: scale(0.97); }
+  .vehicle-card.active {
+    border-color: var(--accent); background: var(--accent);
+  }
+  .vehicle-card.done { border-color: var(--ok); }
+  .vehicle-card.done .vc-num { color: var(--ok); }
+  .vehicle-card .vc-num {
+    font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: var(--text);
+  }
+  .vehicle-card.active .vc-num { color: #fff; }
+  .vehicle-card .vc-name {
+    font-size: 12px; color: var(--text2); margin-top: 2px;
+  }
+  .vehicle-card.active .vc-name { color: rgba(255,255,255,0.7); }
+  .vehicle-card .vc-status {
+    font-size: 11px; margin-top: 8px; font-weight: 600;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .vc-status.pending { color: var(--text3); }
+  .vc-status.in-progress { color: #c07a00; }
+  .vc-status.ok { color: var(--ok); }
+  .vc-status.ng { color: var(--ng); }
+  .vehicle-card.active .vc-status { color: rgba(255,255,255,0.8); }
+  .vc-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ===================== FORM CARD ===================== */
+  .form-wrap { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px; }
+  .form-top {
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .form-veh-num { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .form-veh-name { font-size: 13px; color: var(--text2); margin-top: 1px; }
+  .form-count { font-size: 13px; color: var(--text2); text-align: right; }
+  .form-count strong { font-size: 18px; font-weight: 700; color: var(--text); }
+
+  /* ===================== SECTION ===================== */
+  .chk-section { border-bottom: 1px solid var(--border); }
+  .chk-section:last-of-type { border-bottom: none; }
+  .chk-section-head {
+    padding: 10px 16px; background: var(--surface2);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; color: var(--text2); letter-spacing: 0.02em;
+  }
+  .chk-section-head-badge {
+    margin-left: auto; font-size: 11px; color: var(--text3); font-weight: 400;
+  }
+  .chk-item {
+    display: flex; align-items: center; padding: 11px 16px;
+    border-bottom: 1px solid var(--border); gap: 10px;
+  }
+  .chk-item:last-child { border-bottom: none; }
+  .chk-item-info { flex: 1; min-width: 0; }
+  .chk-item-name {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chk-item-sub { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+  .air-tag {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    background: #e8f0fe; color: #1a56db; border-radius: 4px;
+    padding: 1px 5px; margin-left: 4px; vertical-align: middle;
+  }
+  .chk-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .chk-btn {
+    width: 44px; height: 36px; border-radius: 9px;
+    border: 1.5px solid var(--border); background: transparent;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s; -webkit-tap-highlight-color: transparent;
+    color: var(--text2);
+  }
+  .chk-btn:active { transform: scale(0.93); }
+  .chk-btn.ok-active { background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok); }
+  .chk-btn.ng-active { background: var(--ng-bg); border-color: var(--ng-border); color: var(--ng); }
+
+  /* ===================== NOTES & INSPECTOR ===================== */
+  .notes-block { padding: 14px 16px; border-top: 1px solid var(--border); }
+  .notes-block label { font-size: 12px; font-weight: 700; color: var(--text2); display: block; margin-bottom: 6px; }
+  .notes-block textarea, .notes-block input {
+    width: 100%; border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px;
+    font-size: 14px; font-family: inherit;
+    background: var(--surface2); color: var(--text);
+    resize: none; transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .notes-block textarea:focus, .notes-block input:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .notes-block textarea { height: 72px; margin-bottom: 10px; }
+
+  /* ===================== SUBMIT BUTTON ===================== */
+  .submit-area {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(244,243,239,0.95);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+  }
+  .submit-inner { max-width: 640px; margin: 0 auto; }
+  .submit-btn {
+    width: 100%; height: 52px; border-radius: 14px;
+    background: var(--accent); color: #fff;
+    border: none; font-size: 16px; font-weight: 700;
+    cursor: pointer; letter-spacing: 0.02em;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity 0.15s, transform 0.12s;
+    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+  }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { background: var(--border2); cursor: not-allowed; color: var(--text3); }
+  .submit-hint { font-size: 11px; color: var(--text2); text-align: center; margin-top: 6px; }
+  .submit-hint.all-ok { color: var(--ok); font-weight: 600; }
+
+  /* ===================== COMPLETED STATE ===================== */
+  .completed-card {
+    background: var(--surface); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px;
+  }
+  .completed-header {
+    padding: 24px 20px 16px; text-align: center; border-bottom: 1px solid var(--border);
+  }
+  .completed-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--ok-bg); margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .completed-icon svg { width: 28px; height: 28px; stroke: var(--ok); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .completed-title { font-size: 17px; font-weight: 800; }
+  .completed-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); }
+  .stat-cell { padding: 16px 12px; text-align: center; border-right: 1px solid var(--border); }
+  .stat-cell:last-child { border-right: none; }
+  .stat-num { font-size: 24px; font-weight: 800; }
+  .stat-num.ok { color: var(--ok); }
+  .stat-num.ng { color: var(--ng); }
+  .stat-num.total { color: var(--text); }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .completed-footer { padding: 14px 16px; display: flex; gap: 8px; }
+  .btn-secondary {
+    flex: 1; height: 44px; border-radius: var(--radius);
+    border: 1.5px solid var(--border); background: transparent;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; color: var(--text); transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-secondary:active { background: var(--surface2); }
+  .ng-warn { background: var(--ng-bg); border: 1px solid var(--ng-border); border-radius: var(--radius); padding: 10px 14px; margin: 0 16px 14px; font-size: 13px; color: var(--ng); font-weight: 600; }
+
+  /* ===================== TOAST ===================== */
+  .toast {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff; border-radius: 100px;
+    padding: 10px 20px; font-size: 14px; font-weight: 600;
+    z-index: 9999; opacity: 0; transition: opacity 0.3s;
+    white-space: nowrap; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ===================== LOADING ===================== */
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(244,243,239,0.9);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9000; flex-direction: column; gap: 12px;
+    font-size: 14px; color: var(--text2); font-weight: 600;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ======= HEADER ======= -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    </div>
+    <div>
+      <div class="header-title">日常点検表</div>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+    <div class="header-progress">
+      <div class="header-pct" id="headerPct">0%</div>
+      <div class="header-pct-label">完了率</div>
+    </div>
+  </div>
+</header>
+<div class="progress-track">
+  <div class="progress-fill" id="globalProgress" style="width:0%"></div>
+</div>
+
+<!-- ======= MAIN ======= -->
+<main class="main">
+  <div class="section-label">車両を選択</div>
+  <div class="vehicle-grid" id="vehicleGrid"></div>
+  <div id="formArea"></div>
+</main>
+
+<!-- ======= FIXED SUBMIT ======= -->
+<div class="submit-area">
+  <div class="submit-inner">
+    <button class="submit-btn" id="submitBtn" disabled onclick="handleSubmit()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      点検完了・送信
+    </button>
+    <div class="submit-hint" id="submitHint">全項目を確認し、氏名を入力してください</div>
+  </div>
+</div>
+
+<!-- ======= LOADING OVERLAY ======= -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div>スプレッドシートに送信中...</div>
+</div>
+
+<!-- ======= TOAST ======= -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== CONFIG =====================
+// ★ ここに後でGASのURLを貼り付けてください ★
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyEZydAJx0bVgW3Ih80ZwAF-atvjMXhiykoO5Co_iZjB3rdWJzlJBqJvVkvHA-GM0cJ8g/exec';
+
+// ===================== DATA =====================
+const VEHICLES = [
+  { id: 'v1', num: '6541', name: '味岡' },
+  { id: 'v2', num: '6654', name: '' },
+  { id: 'v3', num: '808',  name: '牧野' },
+  { id: 'v4', num: '7538', name: '倉本' },
+];
+
+const SECTIONS = [
+  {
+    id: 'brake_seat', label: '① 運転席 — ブレーキ',
+    items: [
+      { id: 'b1', name: 'ブレーキペダル', sub: '踏みしろ・きき具合' },
+      { id: 'b2', name: '駐車ブレーキレバー', sub: '引きしろ（踏みしろ）' },
+      { id: 'b3', name: '◎空気圧力計', sub: '空気圧力の上がり具合', air: true },
+      { id: 'b4', name: '◎ブレーキバルブ', sub: 'バルブの排気音', air: true },
+    ]
+  },
+  {
+    id: 'lights', label: '② 車の周り — 灯火装置・方向指示器',
+    items: [
+      { id: 'l1', name: '灯火装置・方向指示器', sub: '点灯・点滅具合・汚れ・損傷、レンズ・反射器の変色' },
+    ]
+  },
+  {
+    id: 'exterior', label: '② 車の周り — ブレーキ・タイヤ',
+    items: [
+      { id: 'br1', name: 'ブレーキオイルリザーバータンク', sub: '液量・漏れ' },
+      { id: 'br2', name: 'タイヤ（空気圧）', sub: '空気圧' },
+      { id: 'br3', name: 'タイヤ（外観）', sub: '亀裂・損傷' },
+      { id: 'br4', name: 'タイヤ（摩耗）', sub: '異常な摩耗' },
+      { id: 'br5', name: 'ホイール ナット', sub: 'ナットの緩み・脱落' },
+      { id: 'br6', name: 'ホイール ボルト（さび）', sub: 'ボルト付近のさび汁' },
+      { id: 'br7', name: 'ホイール ボルト（突出）', sub: 'ボルト突出不揃い・折損' },
+      { id: 'br8', name: '◎空気圧力計', sub: '空気圧力の上がり具合', air: true },
+      { id: 'br9', name: '◎ブレーキバルブ', sub: 'バルブの排気管', air: true },
+    ]
+  },
+  {
+    id: 'periodic', label: '適切な時期に行う点検',
+    items: [
+      { id: 't1', name: 'エンジン（始動）', sub: 'かかり具合・異音' },
+      { id: 't2', name: 'エンジン（走行）', sub: '低速・加速の状態' },
+      { id: 't3', name: 'ウインドウォッシャ', sub: '液量と噴射状態' },
+      { id: 't4', name: 'ワイパー', sub: '拭き取りの状態' },
+      { id: 't5', name: 'バッテリ', sub: '液量' },
+      { id: 't6', name: 'タイヤ（溝の深さ）', sub: '溝の深さ' },
+      { id: 't7', name: 'ラジエター', sub: '水量' },
+      { id: 't8', name: 'ファンベルト', sub: '張り具合・損傷' },
+      { id: 't9', name: '潤滑装置（エンジンオイル）', sub: 'エンジンオイルの量' },
+      { id: 't10', name: '◎空気圧力計', sub: '空気圧力の上がり具合', air: true },
+      { id: 't11', name: '◎ブレーキバルブ', sub: 'バルブの排気管', air: true },
+    ]
+  },
+];
+
+const ALL_ITEMS = SECTIONS.flatMap(s => s.items);
+const TOTAL = ALL_ITEMS.length;
+
+// ===================== STATE =====================
+let checks = {};   // { vehicleId: { itemId: 'ok'|'ng'|null } }
+let notes = {};    // { vehicleId: string }
+let prevNote = {}; // { vehicleId: string }
+let inspector = {};// { vehicleId: string }
+let completed = {};// { vehicleId: true }
+let activeV = VEHICLES[0].id;
+
+VEHICLES.forEach(v => {
+  checks[v.id] = {};
+  ALL_ITEMS.forEach(it => checks[v.id][it.id] = null);
+  notes[v.id] = '';
+  prevNote[v.id] = '';
+  inspector[v.id] = '';
+});
+
+// ===================== HELPERS =====================
+function prog(vid) {
+  const s = checks[vid];
+  const done = Object.values(s).filter(x => x !== null).length;
+  const ok   = Object.values(s).filter(x => x === 'ok').length;
+  const ng   = Object.values(s).filter(x => x === 'ng').length;
+  return { done, ok, ng, total: TOTAL, pct: Math.round(done/TOTAL*100) };
+}
+
+function globalPct() {
+  let d = 0, t = 0;
+  VEHICLES.forEach(v => { const p = prog(v.id); d += p.done; t += p.total; });
+  return Math.round(d/t*100);
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function toast(msg, duration=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ===================== RENDER =====================
+function render() {
+  document.getElementById('headerDate').textContent = todayStr();
+  const gp = globalPct();
+  document.getElementById('headerPct').textContent = gp + '%';
+  document.getElementById('globalProgress').style.width = gp + '%';
+  renderVehicles();
+  renderForm();
+  updateSubmit();
+}
+
+function renderVehicles() {
+  const el = document.getElementById('vehicleGrid');
+  el.innerHTML = VEHICLES.map(v => {
+    const p = prog(v.id);
+    const isActive = v.id === activeV;
+    const isDone = completed[v.id];
+    let statusHtml;
+    if (isDone) {
+      statusHtml = `<div class="vc-status ok"><span class="vc-dot"></span>送信完了</div>`;
+    } else if (p.done === 0) {
+      statusHtml = `<div class="vc-status pending"><span class="vc-dot"></span>未実施</div>`;
+    } else if (p.done < p.total) {
+      statusHtml = `<div class="vc-status in-progress"><span class="vc-dot"></span>${p.done}/${p.total}確認済</div>`;
+    } else if (p.ng > 0) {
+      statusHtml = `<div class="vc-status ng"><span class="vc-dot"></span>要確認${p.ng}件</div>`;
+    } else {
+      statusHtml = `<div class="vc-status ok"><span class="vc-dot"></span>全項目OK</div>`;
+    }
+    return `<div class="vehicle-card ${isActive?'active':''} ${isDone?'done':''}"
+      onclick="selectV('${v.id}')" role="button" tabindex="0"
+      aria-label="車両${v.num} ${v.name}">
+      <div class="vc-num">${v.num}</div>
+      <div class="vc-name">${v.name||'（氏名なし）'}</div>
+      ${statusHtml}
+    </div>`;
+  }).join('');
+}
+
+function renderForm() {
+  const v = VEHICLES.find(x => x.id === activeV);
+  const p = prog(activeV);
+  const el = document.getElementById('formArea');
+
+  if (completed[activeV]) {
+    const ngItems = ALL_ITEMS.filter(it => checks[activeV][it.id] === 'ng');
+    const ngWarn = ngItems.length
+      ? `<div class="ng-warn">⚠ 要確認 ${ngItems.length}件：${ngItems.map(i=>i.name).join('、')}</div>`
+      : '';
+    el.innerHTML = `
+      <div class="completed-card">
+        <div class="completed-header">
+          <div class="completed-icon">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="completed-title">送信完了</div>
+          <div class="completed-sub">車両 ${v.num}（${v.name}）の点検データをスプレッドシートに記録しました</div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-cell"><div class="stat-num ok">${p.ok}</div><div class="stat-lbl">異常なし</div></div>
+          <div class="stat-cell"><div class="stat-num ng">${p.ng}</div><div class="stat-lbl">要確認</div></div>
+          <div class="stat-cell"><div class="stat-num total">${p.total}</div><div class="stat-lbl">合計項目</div></div>
+        </div>
+        ${ngWarn}
+        <div class="completed-footer">
+          <button class="btn-secondary" onclick="uncomplete('${activeV}')">修正して再送信</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const sectionsHtml = SECTIONS.map(sec => {
+    const secDone = sec.items.filter(it => checks[activeV][it.id] !== null).length;
+    const itemsHtml = sec.items.map(it => {
+      const val = checks[activeV][it.id];
+      return `<div class="chk-item">
+        <div class="chk-item-info">
+          <div class="chk-item-name">${it.name}${it.air?'<span class="air-tag">エアブレーキ</span>':''}</div>
+          <div class="chk-item-sub">${it.sub}</div>
+        </div>
+        <div class="chk-btns">
+          <button class="chk-btn ${val==='ok'?'ok-active':''}"
+            onclick="setCheck('${activeV}','${it.id}','ok')" aria-label="${it.name} 異常なし">○</button>
+          <button class="chk-btn ${val==='ng'?'ng-active':''}"
+            onclick="setCheck('${activeV}','${it.id}','ng')" aria-label="${it.name} 要確認">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="chk-section">
+      <div class="chk-section-head">
+        <span>${sec.label}</span>
+        <span class="chk-section-head-badge">${secDone}/${sec.items.length}</span>
+      </div>
+      ${itemsHtml}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="form-wrap">
+      <div class="form-top">
+        <div>
+          <div class="form-veh-num">${v.num}</div>
+          <div class="form-veh-name">${v.name||'（氏名なし）'} — ${todayStr()}</div>
+        </div>
+        <div class="form-count"><strong>${p.done}</strong><br>/ ${p.total} 項目</div>
+      </div>
+      ${sectionsHtml}
+      <div class="notes-block">
+        <label>🚨 運行中の異常箇所（前日または前回）</label>
+        <textarea id="prevNoteInput" placeholder="異常がなければ「異常なし」と入力..."
+          oninput="prevNote['${activeV}']=this.value">${prevNote[activeV]}</textarea>
+        <label>📋 異常箇所の措置</label>
+        <textarea id="noteInput" placeholder="措置内容を記入..."
+          oninput="notes['${activeV}']=this.value">${notes[activeV]}</textarea>
+        <label style="margin-top:8px">👤 点検実施者氏名</label>
+        <input type="text" id="inspectorInput" placeholder="氏名を入力してください"
+          value="${inspector[activeV]}"
+          oninput="inspector['${activeV}']=this.value; updateSubmit()" />
+      </div>
+    </div>`;
+}
+
+function updateSubmit() {
+  const p = prog(activeV);
+  const btn = document.getElementById('submitBtn');
+  const hint = document.getElementById('submitHint');
+  if (!btn) return;
+  const allChecked = p.done === p.total;
+  const hasName = inspector[activeV].trim() !== '';
+  const isDone = completed[activeV];
+  btn.disabled = !(allChecked && hasName && !isDone);
+  if (isDone) {
+    hint.textContent = '✓ この車両は送信済みです';
+    hint.className = 'submit-hint all-ok';
+  } else if (!allChecked) {
+    hint.textContent = `残り ${p.total - p.done} 項目を確認してください`;
+    hint.className = 'submit-hint';
+  } else if (!hasName) {
+    hint.textContent = '点検実施者の氏名を入力してください';
+    hint.className = 'submit-hint';
+  } else {
+    hint.textContent = '全項目確認済み — 送信できます';
+    hint.className = 'submit-hint all-ok';
+  }
+}
+
+// ===================== ACTIONS =====================
+function selectV(vid) {
+  activeV = vid;
+  render();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function setCheck(vid, itemId, val) {
+  checks[vid][itemId] = checks[vid][itemId] === val ? null : val;
+  render();
+}
+
+function uncomplete(vid) {
+  completed[vid] = false;
+  render();
+}
+
+// ===================== SUBMIT =====================
+async function handleSubmit() {
+  const p = prog(activeV);
+  if (p.done < p.total || !inspector[activeV].trim()) return;
+
+  const v = VEHICLES.find(x => x.id === activeV);
+  const payload = {
+    date: todayISO(),
+    vehicleNum: v.num,
+    vehicleName: v.name,
+    inspector: inspector[activeV].trim(),
+    prevAbnormal: prevNote[activeV] || '異常なし',
+    measures: notes[activeV] || 'なし',
+    okCount: p.ok,
+    ngCount: p.ng,
+    totalCount: p.total,
+    checks: {}
+  };
+  ALL_ITEMS.forEach(it => {
+    payload.checks[it.id] = checks[activeV][it.id] || '未';
+  });
+
+  // GAS URLが未設定の場合はダミー送信
+  if (GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+    document.getElementById('loadingOverlay').classList.add('show');
+    await new Promise(r => setTimeout(r, 1500));
+    document.getElementById('loadingOverlay').classList.remove('show');
+    completed[activeV] = true;
+    toast('✓ （デモ）送信完了しました');
+    render();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    return;
+  }
+
+  document.getElementById('loadingOverlay').classList.add('show');
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    completed[activeV] = true;
+    toast('✓ スプレッドシートに送信しました');
+    render();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  } catch(e) {
+    toast('⚠ 送信に失敗しました。通信を確認してください');
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
+}
+
+// ===================== INIT =====================
+document.getElementById('headerDate').textContent = todayStr();
+render();
+</script>
+</body>
+</html>
